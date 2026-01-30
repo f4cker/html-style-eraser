@@ -288,6 +288,29 @@
         };
       }
 
+      /** Hardcoded: remove empty <p>&nbsp;</p> and <div>&nbsp;</div> (and numeric/char forms). */
+      function removeEmptyNbspNodes(html) {
+        var list = [
+          '<p>&nbsp;</p>', '<p>&#160;</p>', '<p>&#xA0;</p>',
+          '<div>&nbsp;</div>', '<div>&#160;</div>', '<div>&#xA0;</div>'
+        ];
+        var s = html;
+        for (var i = 0; i < list.length; i++) {
+          while (s.indexOf(list[i]) !== -1) s = s.split(list[i]).join('');
+        }
+        return s;
+      }
+
+      /** Restore entity form: browser may serialize as raw Unicode, we want &ensp; etc. in output. */
+      function restoreEntityForm(html) {
+        return html
+          .replace(/\u2002/g, '&ensp;')   /* en space */
+          .replace(/\u2003/g, '&emsp;')   /* em space */
+          .replace(/\u200C/g, '&zwnj;')   /* zero-width non-joiner */
+          .replace(/\u200D/g, '&zwj;')    /* zero-width joiner */
+          .replace(/\u2009/g, '&thinsp;'); /* thin space */
+      }
+
       function sanitizeNode(root, options) {
         const dangerousTags = ['SCRIPT', 'STYLE', 'IFRAME', 'META', 'LINK'];
         const semanticTags = [
@@ -349,10 +372,13 @@
 
       function clearStyleFromHtml(htmlString, options) {
         if (!htmlString || !htmlString.trim()) return '';
-        const container = document.createElement('div');
+        var container = document.createElement('div');
         container.innerHTML = htmlString.trim();
         sanitizeNode(container, options);
-        return container.innerHTML;
+        var result = container.innerHTML;
+        result = removeEmptyNbspNodes(result);
+        result = restoreEntityForm(result);
+        return result;
       }
 
       function showToast(message) {
