@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>样式清理 Demo</title>
+  <style>
+    .editor {
+      border: 1px solid #ccc;
+      padding: 15px;
+      min-height: 260px;
+    }
+
+    button {
+      margin-top: 10px;
+      margin-right: 5px;
+    }
+
+    label {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h3>SEO 样式清理 Demo</h3>
+
+  <div id="editor" class="editor" contenteditable="true">
+    <!-- 东西保留在下面 -->
+<!-- 注释必须保留 -->
+<p>
+  <strong>加粗文本</strong>
+  <a href="https://example.com">链接</a>
+</p>
+
+<table style="border:2px solid red; width:100%;">
+  <thead>
+    <tr>
+      <th style="background:yellow">姓名</th>
+      <th style="background:yellow">年龄</th>
+      <th style="background:yellow">城市</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="color:green">张三</td>
+      <td>28</td>
+      <td>深圳</td>
+    </tr>
+    <tr>
+      <td rowspan="2">李四</td>
+      <td>31</td>
+      <td>上海</td>
+    </tr>
+    <tr>
+      <td colspan="2" style="color:blue">合并单元格</td>
+    </tr>
+  </tbody>
+</table>
+    <!-- 东西保留在上面 -->
+  </div>
+
+  <br />
+
+  <label>
+    <input type="checkbox" id="keepTableStyle" checked />
+    保留表格样式（边框/颜色/宽度）
+  </label>
+
+  <br />
+
+  <button onclick="cleanFull()">整页清理</button>
+  <button onclick="cleanSelection()">清理选中内容</button>
+
+  <script>
+
+    /** -------- 配置开关 -------- */
+    function getOptions() {
+      return {
+        keepTableStyle: document.getElementById('keepTableStyle').checked
+      };
+    }
+
+    /** -------- 唯一规则源 -------- */
+    function sanitizeNode(root, options) {
+
+      const dangerousTags = ['SCRIPT', 'STYLE', 'IFRAME', 'META', 'LINK'];
+
+      const semanticTags = [
+        'STRONG', 'EM', 'B', 'I',
+        'H1', 'H2', 'H3', 'H4',
+        'UL', 'OL', 'LI',
+        'BLOCKQUOTE'
+      ];
+
+      const tableTags = ['TABLE', 'TR', 'TD', 'TH', 'TBODY', 'THEAD', 'TFOOT'];
+
+      function walk(node) {
+
+        if (node.nodeType === Node.COMMENT_NODE) return;
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+
+          if (dangerousTags.includes(node.tagName)) {
+            node.remove();
+            return;
+          }
+
+          /** 表格逻辑 */
+          if (tableTags.includes(node.tagName)) {
+
+            // 开关：是否保留 style
+            [...node.attributes].forEach(attr => {
+              const n = attr.name.toLowerCase();
+
+              if (
+                n === 'colspan' ||
+                n === 'rowspan' ||
+                n === 'border' ||
+                n === 'width' ||
+                n.startsWith('data-') ||
+                n.startsWith('aria-')
+              ) return;
+
+              if (options.keepTableStyle && n === 'style') return;
+
+              node.removeAttribute(n);
+            });
+          }
+
+          /** 链接保护 */
+          else if (node.tagName === 'A') {
+            [...node.attributes].forEach(attr => {
+              const n = attr.name.toLowerCase();
+              if (
+                n === 'href' ||
+                n === 'target' ||
+                n === 'rel' ||
+                n.startsWith('data-') ||
+                n.startsWith('aria-')
+              ) return;
+              node.removeAttribute(n);
+            });
+          }
+
+          /** 语义标签 */
+          else if (semanticTags.includes(node.tagName)) {
+            [...node.attributes].forEach(attr => {
+              const n = attr.name.toLowerCase();
+              if (n.startsWith('data-') || n.startsWith('aria-')) return;
+              node.removeAttribute(n);
+            });
+          }
+
+          /** 普通标签 */
+          else {
+            [...node.attributes].forEach(attr => {
+              const n = attr.name.toLowerCase();
+              if (n.startsWith('data-') || n.startsWith('aria-')) return;
+              node.removeAttribute(n);
+            });
+          }
+        }
+
+        [...node.childNodes].forEach(walk);
+      }
+
+      walk(root);
+    }
+
+    /** -------- 整页清理 -------- */
+    function cleanFull() {
+      const editor = document.getElementById('editor');
+      const clone = editor.cloneNode(true);
+
+      sanitizeNode(clone, getOptions());
+
+      editor.focus();
+      document.execCommand('selectAll');
+      document.execCommand('insertHTML', false, clone.innerHTML);
+    }
+
+    /** -------- 选区清理 -------- */
+    function cleanSelection() {
+      const editor = document.getElementById('editor');
+      const selection = window.getSelection();
+
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      if (range.collapsed) return;
+
+      if (
+        !editor.contains(selection.anchorNode) ||
+        !editor.contains(selection.focusNode)
+      ) return;
+
+      const tempDiv = document.createElement('div');
+      tempDiv.appendChild(range.cloneContents());
+
+      sanitizeNode(tempDiv, getOptions());
+
+      editor.focus();
+      document.execCommand('insertHTML', false, tempDiv.innerHTML);
+    }
+
+  </script>
+</body>
+
+</html>

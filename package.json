@@ -1,0 +1,13 @@
+{
+  "name": "clear-style",
+  "version": "1.0.0",
+  "description": "HTML style cleaner - clear inline styles and unsafe attributes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
