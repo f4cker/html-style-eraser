@@ -47,9 +47,39 @@
       margin-bottom: 8px;
     }
 
+    .panel-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      min-height: 200px;
+    }
+
+    @media (max-width: 720px) {
+      .panel-row {
+        flex-direction: column;
+      }
+    }
+
+    .panel-half {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-half .label-tab {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #888;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
     textarea {
       width: 100%;
-      min-height: 180px;
+      flex: 1;
+      min-height: 160px;
       padding: 12px;
       font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
       font-size: 13px;
@@ -63,6 +93,23 @@
       outline: none;
       border-color: #4a9eff;
       box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+    }
+
+    .preview-wrap {
+      flex: 1;
+      min-height: 160px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .preview-wrap iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 160px;
+      border: none;
+      display: block;
     }
 
     #output {
@@ -154,7 +201,18 @@
 
   <div class="panel">
     <span class="panel-label">Input – HTML source to clean</span>
-    <textarea id="input" placeholder="Paste your HTML here..."></textarea>
+    <div class="panel-row">
+      <div class="panel-half">
+        <span class="label-tab">Source</span>
+        <textarea id="input" placeholder="Paste your HTML here..."></textarea>
+      </div>
+      <div class="panel-half">
+        <span class="label-tab">Preview</span>
+        <div class="preview-wrap">
+          <iframe id="inputPreview" title="Input preview" sandbox="allow-same-origin"></iframe>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="actions">
@@ -167,7 +225,18 @@
 
   <div class="panel">
     <span class="panel-label">Output – cleaned HTML</span>
-    <textarea id="output" readonly placeholder="Result will appear here after clearing..."></textarea>
+    <div class="panel-row">
+      <div class="panel-half">
+        <span class="label-tab">Source</span>
+        <textarea id="output" readonly placeholder="Result will appear here after clearing..."></textarea>
+      </div>
+      <div class="panel-half">
+        <span class="label-tab">Preview</span>
+        <div class="preview-wrap">
+          <iframe id="outputPreview" title="Output preview" sandbox="allow-same-origin"></iframe>
+        </div>
+      </div>
+    </div>
     <div class="actions" style="margin-top: 12px; margin-bottom: 0;">
       <button type="button" class="btn-secondary" id="btnCopy" disabled>Copy Result</button>
     </div>
@@ -180,10 +249,38 @@
 
       const inputEl = document.getElementById('input');
       const outputEl = document.getElementById('output');
+      const inputPreviewEl = document.getElementById('inputPreview');
+      const outputPreviewEl = document.getElementById('outputPreview');
       const btnClear = document.getElementById('btnClear');
       const btnCopy = document.getElementById('btnCopy');
       const keepTableStyleEl = document.getElementById('keepTableStyle');
       const toastEl = document.getElementById('toast');
+
+      var inputPreviewTimer = null;
+
+      var PREVIEW_PLACEHOLDER = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;color:#999;font-size:13px;padding:8px;">Preview</body></html>';
+
+      function setPreview(iframeEl, html) {
+        if (!iframeEl) return;
+        var raw = html ? html.trim() : '';
+        if (!raw) {
+          iframeEl.srcdoc = PREVIEW_PLACEHOLDER;
+          return;
+        }
+        if (/^<!DOCTYPE/i.test(raw) || /^<html[\s>]/i.test(raw)) {
+          iframeEl.srcdoc = raw;
+        } else {
+          iframeEl.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:8px;">' + raw + '</body></html>';
+        }
+      }
+
+      function updateInputPreview() {
+        setPreview(inputPreviewEl, inputEl.value);
+      }
+
+      function updateOutputPreview() {
+        setPreview(outputPreviewEl, outputEl.value);
+      }
 
       function getOptions() {
         return {
@@ -271,6 +368,7 @@
         const raw = inputEl.value;
         const result = clearStyleFromHtml(raw, getOptions());
         outputEl.value = result;
+        updateOutputPreview();
         btnCopy.disabled = !result;
         if (result) showToast('Style cleared.');
       }
@@ -285,8 +383,19 @@
         });
       }
 
+      inputEl.addEventListener('input', function () {
+        clearTimeout(inputPreviewTimer);
+        inputPreviewTimer = setTimeout(updateInputPreview, 200);
+      });
+      inputEl.addEventListener('paste', function () {
+        setTimeout(updateInputPreview, 50);
+      });
+
       btnClear.addEventListener('click', runClear);
       btnCopy.addEventListener('click', copyResult);
+
+      setPreview(inputPreviewEl, '');
+      setPreview(outputPreviewEl, '');
     })();
   </script>
 </body>
