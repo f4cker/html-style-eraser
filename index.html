@@ -350,15 +350,21 @@
                 node.removeAttribute(n);
               });
             } else if (node.tagName === 'IMG') {
-              [...node.attributes].forEach(attr => {
-                const n = attr.name.toLowerCase();
-                if (
-                  n === 'src' || n === 'alt' || n === 'width' || n === 'height' ||
-                  n === 'loading' || n === 'decoding' || n === 'referrerpolicy' ||
-                  n.startsWith('data-') || n.startsWith('aria-')
-                ) return;
-                node.removeAttribute(n);
-              });
+              var imgKeep = ['src', 'alt', 'width', 'height', 'loading', 'decoding', 'referrerpolicy'];
+              var saved = {};
+              for (var i = 0; i < node.attributes.length; i++) {
+                var attr = node.attributes[i];
+                var n = attr.name.toLowerCase();
+                if (imgKeep.indexOf(n) !== -1 || n.indexOf('data-') === 0 || n.indexOf('aria-') === 0) {
+                  saved[attr.name] = attr.value;
+                }
+              }
+              while (node.attributes.length) {
+                node.removeAttribute(node.attributes[0].name);
+              }
+              for (var k in saved) {
+                node.setAttribute(k, saved[k]);
+              }
             } else if (semanticTags.includes(node.tagName)) {
               [...node.attributes].forEach(attr => {
                 const n = attr.name.toLowerCase();
