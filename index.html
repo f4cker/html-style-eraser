@@ -313,6 +313,8 @@
 
       function sanitizeNode(root, options) {
         const dangerousTags = ['SCRIPT', 'STYLE', 'IFRAME', 'META', 'LINK'];
+        const headingTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'];
+        const inlineInHeadingTags = ['STRONG', 'EM', 'B', 'I'];
         const semanticTags = [
           'STRONG', 'EM', 'B', 'I',
           'H1', 'H2', 'H3', 'H4',
@@ -321,6 +323,17 @@
         ];
         const tableTags = ['TABLE', 'TR', 'TD', 'TH', 'TBODY', 'THEAD', 'TFOOT'];
 
+        function unwrap(node) {
+          var parent = node.parentNode;
+          if (!parent) return;
+          var next = node.nextSibling;
+          var kids = [];
+          for (var i = 0; i < node.childNodes.length; i++) kids.push(node.childNodes[i]);
+          for (var j = 0; j < kids.length; j++) parent.insertBefore(kids[j], next);
+          node.remove();
+          for (var j = 0; j < kids.length; j++) walk(kids[j]);
+        }
+
         function walk(node) {
           if (node.nodeType === Node.COMMENT_NODE) return;
 
@@ -328,6 +341,14 @@
             if (dangerousTags.includes(node.tagName)) {
               node.remove();
               return;
+            }
+
+            if (inlineInHeadingTags.indexOf(node.tagName) !== -1) {
+              var parent = node.parentNode;
+              if (parent && parent.nodeType === Node.ELEMENT_NODE && headingTags.indexOf(parent.tagName) !== -1) {
+                unwrap(node);
+                return;
+              }
             }
 
             if (tableTags.includes(node.tagName)) {
