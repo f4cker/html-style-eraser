@@ -349,6 +349,16 @@
                 ) return;
                 node.removeAttribute(n);
               });
+            } else if (node.tagName === 'IMG') {
+              [...node.attributes].forEach(attr => {
+                const n = attr.name.toLowerCase();
+                if (
+                  n === 'src' || n === 'alt' || n === 'width' || n === 'height' ||
+                  n === 'loading' || n === 'decoding' || n === 'referrerpolicy' ||
+                  n.startsWith('data-') || n.startsWith('aria-')
+                ) return;
+                node.removeAttribute(n);
+              });
             } else if (semanticTags.includes(node.tagName)) {
               [...node.attributes].forEach(attr => {
                 const n = attr.name.toLowerCase();
